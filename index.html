@@ -157,8 +157,10 @@
 <script>
     lucide.createIcons();
 
-    // 重要：請將您部署後獲得的 Google Apps Script 網址貼在下方
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyXJNt4C6WGb8j8m-1Qx3SCwnLCAmt8Ls0nbRCK0RwBG-yy6F_BAwVjR2ZX0Choy4rRbg/exec"; 
+    /** * 重要：請務必更新此處為您最新的 Google Apps Script 網址 
+     * 每次更動 Code.gs 都要部署「新版本」並替換網址
+     */
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby017L3zGb2Pu2prZsIyUrtIEsCRcn4RvZoYIW1VTmDidsKV1GN1-UASLdro-D7u8Ao/exec"; 
 
     const poolShort = ["kit", "Tim", "wig", "not", "cod", "rod", "hop", "cut", "tub", "duck"];
     const poolLong = ["kite", "time", "five", "ride", "note", "code", "hope", "cute", "tube", "cube", "tune", "dune", "mute"];
@@ -345,6 +347,7 @@
         document.getElementById('final-stats').innerText = `總平均分數：${avg} 分`;
     }
 
+    /** 繳交成績至 Google Sheets */
     async function submitToSheets() {
         const avg = Math.round(scores.reduce((a,b)=>a+b,0)/10);
         const data = { ...studentInfo, totalScore: avg, record: recognizedHistory };
@@ -352,28 +355,31 @@
         document.getElementById('submit-btn').disabled = true;
         document.getElementById('submit-btn').innerText = "傳送中...";
 
-        // 支援 GitHub 外連傳送到 GAS API
-        if (GAS_WEB_APP_URL && GAS_WEB_APP_URL.includes("google.com")) {
-            try {
-                // 使用 fetch 傳送到 GAS 的 doPost
-                await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                // 由於 no-cors 無法獲取回傳，我們預設只要沒拋出例外即為成功
-                document.getElementById('submit-btn').classList.add('hidden');
-                document.getElementById('success-area').classList.remove('hidden');
-            } catch (e) {
-                console.error("Submit error:", e);
-                alert("繳交失敗，請檢查網路。");
-                document.getElementById('submit-btn').disabled = false;
-                document.getElementById('submit-btn').innerText = "按此繳交成績";
-            }
-        } else {
-            alert("尚未正確設定 GAS 網址！請老師確認腳本網址。");
+        // 確保網址存在
+        if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.includes("google.com")) {
+            alert("⚠️ 錯誤：尚未設定正確的 GAS 網址，請老師確認程式碼。");
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('submit-btn').innerText = "按此繳交成績";
+            return;
+        }
+
+        try {
+            /** * 使用 fetch 傳送到 GAS 的 doPost
+             * 採用 no-cors 模式是為了繞過 GitHub Pages 上的跨網域限制
+             */
+            await fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(data)
+            });
+            
+            // 由於 no-cors 下無法獲取正確回傳值，我們預設只要執行完成即成功
+            document.getElementById('submit-btn').classList.add('hidden');
+            document.getElementById('success-area').classList.remove('hidden');
+        } catch (e) {
+            console.error("Submit error:", e);
+            alert("❌ 繳交失敗，請檢查網路或確認 GAS 網址是否正確。");
             document.getElementById('submit-btn').disabled = false;
             document.getElementById('submit-btn').innerText = "按此繳交成績";
         }
