@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Phonics 口說練習</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap');
+        body { font-family: 'Lexend', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 2rem; border: 1px solid rgba(255, 255, 255, 0.3); }
+        .record-btn.active { animation: pulse 1.5s infinite; background-color: #ef4444; }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+        .tab-btn.active { background-color: #4f46e5; color: white; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+<div id="app" class="max-w-2xl mx-auto">
+    <!-- 登入與選單介面 -->
+    <div id="login-screen" class="glass-card p-8 shadow-2xl text-center">
+        <h1 class="text-3xl font-extrabold text-indigo-600 mb-6 text-nowrap flex items-center justify-center gap-2">
+            <i data-lucide="graduation-cap" class="w-8 h-8"></i> Phonics 口說挑戰
+        </h1>
+        <div class="space-y-4 text-left">
+            <label class="block text-sm font-bold text-gray-500 ml-2">班級</label>
+            <input type="text" id="student-class" placeholder="例如：301" class="w-full p-4 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 outline-none transition-all mb-2">
+            <label class="block text-sm font-bold text-gray-500 ml-2">座號</label>
+            <input type="text" id="student-id" placeholder="例如：05" class="w-full p-4 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 outline-none transition-all mb-2">
+            <label class="block text-sm font-bold text-gray-500 ml-2">姓名</label>
+            <input type="text" id="student-name" placeholder="請輸入姓名" class="w-full p-4 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 outline-none transition-all mb-6">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="startPracticeMode()" class="bg-white text-indigo-600 border-2 border-indigo-600 font-bold py-4 rounded-xl hover:bg-indigo-50 transition-colors shadow-lg flex flex-col items-center gap-1">
+                    <i data-lucide="book-open"></i> 自由練習
+                </button>
+                <button onclick="startQuiz()" class="bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 flex flex-col items-center gap-1">
+                    <i data-lucide="zap"></i> 開始測驗
+                </button>
+            </div>
+        </div>
+        <p class="mt-6 text-xs text-gray-400 font-medium italic">💡 建議先進入「自由練習」熟悉發音後再測驗喔！</p>
+    </div>
+
+    <!-- 練習模式介面 -->
+    <div id="practice-screen" class="hidden space-y-6">
+        <div class="glass-card p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="backToMenu()" class="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm font-bold">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i> 返回主選單
+                </button>
+                <span class="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Practice Mode</span>
+            </div>
+
+            <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                <button onclick="switchPracticeTab('short')" id="tab-short" class="tab-btn active shrink-0 px-4 py-2 rounded-lg border-2 border-indigo-600 text-indigo-600 font-bold text-sm transition-all">短母音</button>
+                <button onclick="switchPracticeTab('long')" id="tab-long" class="tab-btn shrink-0 px-4 py-2 rounded-lg border-2 border-indigo-600 text-indigo-600 font-bold text-sm transition-all">長母音</button>
+                <button onclick="switchPracticeTab('chant')" id="tab-chant" class="tab-btn shrink-0 px-4 py-2 rounded-lg border-2 border-indigo-600 text-indigo-600 font-bold text-sm transition-all">韻文</button>
+            </div>
+
+            <div class="text-center py-10">
+                <p id="practice-text" class="text-4xl font-bold text-gray-800 mb-8 leading-relaxed">Select a word</p>
+                <div class="flex justify-center gap-4">
+                    <button onclick="playVoice('practice')" class="flex items-center gap-2 bg-blue-100 text-blue-600 px-8 py-3 rounded-full hover:bg-blue-200 transition-all font-semibold shadow-sm">
+                        <i data-lucide="volume-2"></i> 聽原音
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-4 border-t pt-8">
+                <button id="practice-record-btn" 
+                        onmousedown="startRecording('practice')" onmouseup="stopRecording()" 
+                        ontouchstart="startRecording('practice')" ontouchend="stopRecording()" 
+                        class="record-btn w-20 h-20 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xl transition-all outline-none">
+                    <i data-lucide="mic" class="w-8 h-8"></i>
+                </button>
+                <p id="practice-status-hint" class="text-sm text-gray-500 font-medium italic">長按麥克風練習發音</p>
+                <p id="practice-recognized" class="text-lg font-bold text-indigo-900 mt-2 min-h-[1.5rem]"></p>
+            </div>
+            
+            <div id="practice-list" class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <!-- 內容由 JS 動態生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 測驗介面 -->
+    <div id="quiz-screen" class="hidden space-y-6">
+        <div class="glass-card p-6 shadow-xl relative">
+            <div class="flex justify-between items-center mb-4">
+                <span id="progress-text" class="text-indigo-600 font-bold text-sm">第 1 / 10 題</span>
+                <div class="w-32 bg-gray-200 rounded-full h-2">
+                    <div id="progress-fill" class="progress-bar bg-indigo-600 h-2 rounded-full" style="width: 10%"></div>
+                </div>
+            </div>
+            
+            <div class="text-center py-8">
+                <p id="target-text" class="text-4xl font-bold text-gray-800 mb-2 leading-relaxed">Loading...</p>
+                <p id="target-hint" class="text-sm text-indigo-400 font-bold mb-6 tracking-widest uppercase italic">Phonics Type</p>
+                <div class="flex justify-center gap-4">
+                    <button onclick="playVoice('quiz')" class="flex items-center gap-2 bg-blue-100 text-blue-600 px-6 py-3 rounded-full hover:bg-blue-200 transition-all font-semibold">
+                        <i data-lucide="volume-2"></i> 聽原音
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-4 border-t pt-8">
+                <button id="record-btn" 
+                        onmousedown="startRecording('quiz')" onmouseup="stopRecording()" 
+                        ontouchstart="startRecording('quiz')" ontouchend="stopRecording()" 
+                        class="record-btn w-24 h-24 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xl transition-all outline-none">
+                    <i data-lucide="mic" class="w-10 h-10"></i>
+                </button>
+                <p id="status-hint" class="text-sm text-gray-500 font-medium">長按麥克風開始錄音</p>
+            </div>
+        </div>
+
+        <!-- 辨識結果 -->
+        <div id="result-card" class="glass-card p-6 shadow-lg hidden">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-widest font-bold">辨識結果</p>
+                    <p id="recognized-text" class="text-lg font-semibold text-indigo-900 mt-1 italic">...</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-400 uppercase tracking-widest font-bold">精準度分數</p>
+                    <p id="score-text" class="text-3xl font-black text-indigo-600">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="next-btn" onclick="nextQuestion()" class="hidden w-full bg-emerald-500 text-white font-bold py-4 rounded-xl hover:bg-emerald-600 transition-colors shadow-lg">下一題</button>
+    </div>
+
+    <!-- 結業證書 -->
+    <div id="finish-screen" class="hidden glass-card p-8 shadow-2xl text-center">
+        <div class="flex justify-center mb-6">
+            <i data-lucide="trophy" class="w-20 h-20 text-yellow-500"></i>
+        </div>
+        <h2 class="text-3xl font-extrabold text-gray-800 mb-2">太棒了，完成測驗！</h2>
+        <p id="final-stats" class="text-gray-600 mb-8 font-medium">總平均分數：0 分</p>
+        <button id="submit-btn" onclick="submitToSheets()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2">
+            <i data-lucide="send"></i> 按此繳交成績
+        </button>
+        <div id="success-area" class="hidden mt-6 animate-bounce">
+            <p class="text-lg font-bold text-emerald-600 flex items-center justify-center gap-2">
+                <i data-lucide="check-circle-2"></i> 成績繳交成功！
+            </p>
+            <p class="text-sm text-gray-400 mt-2">老師會看到你的認真練習喔！</p>
+        </div>
+        <button onclick="location.reload()" class="mt-8 text-indigo-600 font-bold hover:underline">返回主選單</button>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    // 請在這裡貼上您部署 Google Apps Script 後獲得的「網頁應用程式網址」
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwd-UfTMLY3paFT8cU5g7L8T2qn7m8ePPud8TY7fs8i8GrbJjRTDKFr0kRqMrh4Tc_DKg/exec"; 
+
+    const poolShort = ["kit", "Tim", "wig", "not", "cod", "rod", "hop", "cut", "tub", "duck"];
+    const poolLong = ["kite", "time", "five", "ride", "note", "code", "hope", "cute", "tube", "cube", "tune", "dune", "mute"];
+    const poolChant = [
+        "Tim is five.", "He can ride a bike.", "Kim is nine.", "She can make a kite.", 
+        "Bob has a cod.", "The cod is in the pot.", "Duke is a duck.", "He's in the tub.", 
+        "Duke is cute.", "He likes ice cubes."
+    ];
+
+    let questions = [];
+    let currentIdx = 0;
+    let scores = [];
+    let recognizedHistory = [];
+    let studentInfo = { className: "", id: "", name: "" };
+    let recognition;
+    let isRecording = false;
+    let currentMode = 'quiz';
+    let currentPracticeItem = "";
+
+    function getRandomItems(arr, count) {
+        return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+    }
+
+    function generateQuestions() {
+        questions = [];
+        getRandomItems(poolShort, 3).forEach(word => questions.push({ text: word, type: "Short Vowel" }));
+        getRandomItems(poolLong, 3).forEach(word => questions.push({ text: word, type: "Long Vowel" }));
+        getRandomItems(poolChant, 4).forEach(sentence => questions.push({ text: sentence, type: "Chant Sentence" }));
+    }
+
+    function initRecognition() {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("此瀏覽器不支援語音辨識，請使用 Chrome 開啟。");
+            return;
+        }
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isRecording = true;
+            const btn = currentMode === 'quiz' ? 'record-btn' : 'practice-record-btn';
+            const hint = currentMode === 'quiz' ? 'status-hint' : 'practice-status-hint';
+            document.getElementById(btn).classList.add('active');
+            document.getElementById(hint).innerText = "正在聆聽中...";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            if (currentMode === 'quiz') {
+                const target = questions[currentIdx].text.toLowerCase().replace(/[.,!]/g, "");
+                const recognized = transcript.toLowerCase().replace(/[.,!]/g, "");
+                const score = calculateSimilarity(target, recognized);
+                displayResult(transcript, score);
+            } else {
+                document.getElementById('practice-recognized').innerText = `辨識內容: "${transcript}"`;
+                document.getElementById('practice-status-hint').innerText = "辨識完成！可再試一次";
+            }
+        };
+
+        recognition.onerror = (event) => {
+            isRecording = false;
+            const btn = currentMode === 'quiz' ? 'record-btn' : 'practice-record-btn';
+            const hint = currentMode === 'quiz' ? 'status-hint' : 'practice-status-hint';
+            document.getElementById(btn).classList.remove('active');
+            document.getElementById(hint).innerText = "辨識失敗，請再長按一次";
+        };
+
+        recognition.onend = () => {
+            isRecording = false;
+            const btn = currentMode === 'quiz' ? 'record-btn' : 'practice-record-btn';
+            document.getElementById(btn).classList.remove('active');
+        };
+    }
+
+    function calculateSimilarity(s1, s2) {
+        const arr1 = s1.split(/\s+/);
+        const arr2 = s2.split(/\s+/);
+        let matches = 0;
+        arr1.forEach(word => { if (arr2.includes(word)) matches++; });
+        let base = Math.round((matches / arr1.length) * 100);
+        return Math.min(100, base + 15);
+    }
+
+    function displayResult(transcript, score) {
+        document.getElementById('result-card').classList.remove('hidden');
+        document.getElementById('recognized-text').innerText = `"${transcript}"`;
+        document.getElementById('score-text').innerText = `${score}%`;
+        scores[currentIdx] = score;
+        recognizedHistory[currentIdx] = transcript;
+        document.getElementById('next-btn').classList.remove('hidden');
+        document.getElementById('status-hint').innerText = "辨識成功！";
+    }
+
+    function startPracticeMode() {
+        currentMode = 'practice';
+        initRecognition();
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('practice-screen').classList.remove('hidden');
+        switchPracticeTab('short');
+    }
+
+    function switchPracticeTab(type) {
+        const tabs = ['short', 'long', 'chant'];
+        tabs.forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
+        document.getElementById(`tab-${type}`).classList.add('active');
+        const list = document.getElementById('practice-list');
+        list.innerHTML = "";
+        let data = type === 'short' ? poolShort : (type === 'long' ? poolLong : poolChant);
+        data.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = "p-3 bg-white border-2 border-indigo-100 rounded-xl text-sm font-bold text-indigo-700 hover:bg-indigo-50 transition-all text-center";
+            btn.innerText = item;
+            btn.onclick = () => selectPracticeItem(item);
+            list.appendChild(btn);
+        });
+        if (data.length > 0) selectPracticeItem(data[0]);
+    }
+
+    function selectPracticeItem(text) {
+        currentPracticeItem = text;
+        document.getElementById('practice-text').innerText = text;
+        document.getElementById('practice-recognized').innerText = "";
+        document.getElementById('practice-status-hint').innerText = "長按麥克風練習發音";
+    }
+
+    function backToMenu() {
+        document.getElementById('practice-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    function startQuiz() {
+        const c = document.getElementById('student-class').value;
+        const i = document.getElementById('student-id').value;
+        const n = document.getElementById('student-name').value;
+        if (!c || !i || !n) { alert("測驗前請填寫完整資訊喔！"); return; }
+        studentInfo = { className: c, id: i, name: n };
+        currentMode = 'quiz';
+        generateQuestions();
+        initRecognition();
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const q = questions[currentIdx];
+        document.getElementById('target-text').innerText = q.text;
+        document.getElementById('target-hint').innerText = q.type;
+        document.getElementById('progress-text').innerText = `第 ${currentIdx + 1} / 10 題`;
+        document.getElementById('progress-fill').style.width = `${((currentIdx + 1) / 10) * 100}%`;
+        document.getElementById('result-card').classList.add('hidden');
+        document.getElementById('next-btn').classList.add('hidden');
+        document.getElementById('status-hint').innerText = "長按麥克風開始錄音";
+    }
+
+    function playVoice(mode) {
+        const text = mode === 'quiz' ? questions[currentIdx].text : currentPracticeItem;
+        if (!text) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US';
+        u.rate = 0.8;
+        window.speechSynthesis.speak(u);
+    }
+
+    function startRecording(mode) { 
+        currentMode = mode;
+        if (recognition && !isRecording) recognition.start(); 
+    }
+    
+    function stopRecording() { if (recognition && isRecording) setTimeout(() => recognition.stop(), 400); }
+
+    function nextQuestion() {
+        if (currentIdx < 9) { currentIdx++; showQuestion(); }
+        else { showFinish(); }
+    }
+
+    function showFinish() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('finish-screen').classList.remove('hidden');
+        const avg = Math.round(scores.reduce((a,b)=>a+b,0)/10);
+        document.getElementById('final-stats').innerText = `總平均分數：${avg} 分`;
+    }
+
+    // 更新後的繳交邏輯，支援跨網域傳輸
+    async function submitToSheets() {
+        const avg = Math.round(scores.reduce((a,b)=>a+b,0)/10);
+        const data = { ...studentInfo, totalScore: avg, record: recognizedHistory };
+        
+        document.getElementById('submit-btn').disabled = true;
+        document.getElementById('submit-btn').innerText = "傳送中...";
+
+        // 1. 優先嘗試 Google 內置傳輸 (GAS 環境)
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(() => {
+                    document.getElementById('submit-btn').classList.add('hidden');
+                    document.getElementById('success-area').classList.remove('hidden');
+                })
+                .saveData(data);
+        } 
+        // 2. 如果是在 GitHub Pages (外部環境)，使用 fetch 傳送到 GAS API
+        else if (GAS_WEB_APP_URL && GAS_WEB_APP_URL.includes("google.com")) {
+            try {
+                // 使用 no-cors 模式確保請求發出，或是後端處理 OPTIONS
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                document.getElementById('submit-btn').classList.add('hidden');
+                document.getElementById('success-area').classList.remove('hidden');
+            } catch (e) {
+                alert("繳交失敗，請聯繫老師檢查網路設定。");
+                document.getElementById('submit-btn').disabled = false;
+                document.getElementById('submit-btn').innerText = "按此繳交成績";
+            }
+        } else {
+            alert("尚未設定 GAS 連結，目前僅為模擬繳交。");
+            document.getElementById('submit-btn').classList.add('hidden');
+            document.getElementById('success-area').classList.remove('hidden');
+        }
+    }
+</script>
+
+</body>
+</html>
